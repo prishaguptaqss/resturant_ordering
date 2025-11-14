@@ -32,7 +32,7 @@ export default function OrderScreen() {
         {recording ? "Recording…" : "Tap mic to start order"}
       </Text>
 
-      {uri ? <Text style={styles.saved}>Saved: {uri}</Text> : null}
+      {/* {uri ? <Text style={styles.saved}>Saved: {uri}</Text> : null} */}
     </View>
   );
 }
