@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from helper import process_audio, validate_audio
 from whisper_manager import whisper_manager, transcribe_audio
 import time
-from test import parser
+from fuzzy_parser import parser
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
