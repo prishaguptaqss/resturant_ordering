@@ -186,6 +186,7 @@ export function useRecorder() {
   const clearOrder = () => {
     setOrder(null);
     setTranscription(null);
+    setSeconds(0);
   };
 
   const uploadAudio = async (fileUri: string) => {

@@ -1,7 +1,3 @@
-"""
-
-Helper functions for audio processing and validation
-"""
 import os
 import uuid
 import wave

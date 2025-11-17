@@ -8,35 +8,77 @@ export default function OrderScreen() {
   const { recording, seconds, toggle, order, isProcessing, transcription, clearOrder } = useRecorder();
   const [processedOrderId, setProcessedOrderId] = useState<string | null>(null);
   const [showOrderCard, setShowOrderCard] = useState(false);
+  const [showEmptyOrderCard, setShowEmptyOrderCard] = useState(false);
   const [showSuccessCard, setShowSuccessCard] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const slideAnim = useRef(new Animated.Value(-400)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const successSlideAnim = useRef(new Animated.Value(-400)).current;
   const successFadeAnim = useRef(new Animated.Value(0)).current;
+  const micPulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (order && order.original_text !== processedOrderId) {
       setProcessedOrderId(order.original_text);
       setCurrentOrder(order);
-      setShowOrderCard(true);
 
-      // Slide in and fade in animation
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 50,
-          friction: 8,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      if (order.items && order.items.length > 0) {
+        setShowOrderCard(true);
+        // Slide in and fade in animation
+        Animated.parallel([
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        setShowEmptyOrderCard(true);
+        // Slide in and fade in animation for empty card
+        Animated.parallel([
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 8,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
     }
   }, [order]);
+
+  // Pulse animation for mic button when idle
+  useEffect(() => {
+    if (!recording && !isProcessing && !showOrderCard && !showEmptyOrderCard) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(micPulseAnim, {
+            toValue: 1.05,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(micPulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [recording, isProcessing, showOrderCard, showEmptyOrderCard]);
 
   const hideOrderCard = () => {
     Animated.parallel([
@@ -52,6 +94,25 @@ export default function OrderScreen() {
       }),
     ]).start(() => {
       setShowOrderCard(false);
+      setCurrentOrder(null);
+      if (clearOrder) clearOrder();
+    });
+  };
+
+  const hideEmptyOrderCard = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -400,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowEmptyOrderCard(false);
       setCurrentOrder(null);
       if (clearOrder) clearOrder();
     });
@@ -189,6 +250,42 @@ export default function OrderScreen() {
         </Animated.View>
       )}
 
+      {/* Empty Order Card */}
+      {showEmptyOrderCard && (
+        <Animated.View
+          style={[
+            styles.emptyOrderCard,
+            {
+              transform: [{ translateY: slideAnim }],
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          <View style={styles.emptyOrderHeader}>
+            <Text style={styles.emptyOrderTitle}>🤔 No Items Detected</Text>
+            <TouchableOpacity onPress={hideEmptyOrderCard} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.emptyOrderBody}>
+            <Text style={styles.emptyOrderMessage}>
+              We couldn't understand any menu items in your voice order.
+            </Text>
+            <Text style={styles.emptyOrderSuggestion}>
+              Try speaking more clearly or check our menu for item names.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.tryAgainButton}
+              onPress={hideEmptyOrderCard}
+            >
+              <Text style={styles.tryAgainButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+
       {/* Success Confirmation Card */}
       {showSuccessCard && (
         <Animated.View
@@ -230,7 +327,9 @@ export default function OrderScreen() {
       )}
 
       {/* Mic Button */}
-      <MicButton recording={recording} onToggle={toggle} disabled={isProcessing} />
+      <Animated.View style={{ transform: [{ scale: micPulseAnim }] }}>
+        <MicButton recording={recording} onToggle={toggle} disabled={isProcessing} />
+      </Animated.View>
 
       {/* Timer */}
       <Text style={styles.timer}>
@@ -244,7 +343,7 @@ export default function OrderScreen() {
       </Text>
 
       {/* Recording Instructions */}
-      {!recording && !isProcessing && !showOrderCard && (
+      {!recording && !isProcessing && !showOrderCard && !showEmptyOrderCard && (
         <View style={styles.instructionsContainer}>
           <Text style={styles.instructionsTitle}>💡 Quick Tips:</Text>
           <Text style={styles.instructionText}>• Hold button for at least 1 second</Text>
@@ -508,6 +607,67 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   okayButtonText: {
+    color: "#0b0d10",
+    fontSize: 16,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  // Empty Order Card Styles
+  emptyOrderCard: {
+    position: "absolute",
+    top: 120,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1a1d23",
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#f59e0b",
+    shadowColor: "#f59e0b",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  emptyOrderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2d35",
+  },
+  emptyOrderTitle: {
+    color: "#f59e0b",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  emptyOrderBody: {
+    padding: 16,
+    alignItems: "center",
+  },
+  emptyOrderMessage: {
+    color: "white",
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 12,
+    lineHeight: 24,
+  },
+  emptyOrderSuggestion: {
+    color: "#aaa",
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  tryAgainButton: {
+    backgroundColor: "#f59e0b",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    minWidth: 120,
+  },
+  tryAgainButtonText: {
     color: "#0b0d10",
     fontSize: 16,
     fontWeight: "700",

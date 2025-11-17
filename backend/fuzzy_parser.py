@@ -93,15 +93,20 @@ class FuzzyOrderParser:
             word = words[i]
             
             # Skip common filler words
-            if word in ['i', 'want', 'get', 'have', 'please', 'can', 'and', 'the', 'of', 'order']:
+            if word in ['i', 'want', 'get', 'have', 'please', 'can', 'and', 'the', 'of', 'order', 'wish', 'to', 'with']:
                 if self.debug:
                     print(f"   [i={i}] '{word}' -> FILLER WORD, skipping")
                 i += 1
                 continue
             
-            # Check if this is a quantity word
+            # Check if this is a quantity word (including digits)
+            quantity = None
             if word in self.quantity_map:
                 quantity = self.quantity_map[word]
+            elif word.isdigit():
+                quantity = int(word)
+            
+            if quantity:
                 processed_indices.add(i)
                 
                 if self.debug:
