@@ -10,8 +10,6 @@ export function useRecorder() {
   const [uri, setUri] = useState<string | null>(null);
   const [transcription, setTranscription] = useState<string | null>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);  //  Prevents overlapping requests
-  const [order, setOrder] = useState<any | null>(null);  //  Store parsed order data
 
   const recRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<any>(null);
@@ -62,15 +60,6 @@ export function useRecorder() {
 
   const start = async () => {
     try {
-      // ✅ CHECK: Prevent starting while processing
-      if (isProcessing) {
-        Alert.alert(
-          'Please Wait',
-          'Still processing your previous order. Please wait...'
-        );
-        return;
-      }
-
       // Check permissions again before recording
       const { status } = await Audio.getPermissionsAsync();
       
@@ -125,30 +114,6 @@ export function useRecorder() {
       const r = recRef.current;
       if (!r) return;
 
-      // ✅ VALIDATION 1: Check minimum duration
-      if (seconds < 1) {
-        Alert.alert(
-          'Recording Too Short',
-          'Please hold the button for at least 1 second while speaking your order.'
-        );
-        
-        // Clean up recording
-        await r.stopAndUnloadAsync();
-        setRecording(false);
-        recRef.current = null;
-        setSeconds(0);
-        return;
-      }
-
-      // ✅ VALIDATION 2: Check if already processing
-      if (isProcessing) {
-        Alert.alert(
-          'Please Wait',
-          'Still processing your previous order...'
-        );
-        return;
-      }
-
       await r.stopAndUnloadAsync();
       const fileUri = r.getURI();
       setUri(fileUri || null);
@@ -156,36 +121,22 @@ export function useRecorder() {
       setRecording(false);
       recRef.current = null;
 
-      console.log('Recording stopped. Duration:', seconds, 'seconds. File URI:', fileUri);
+      console.log('Recording stopped. File URI:', fileUri);
 
       if (fileUri) {
-        setIsProcessing(true);  // ✅ LOCK: Prevent new recordings
-        try {
-          const transcriptionText = await uploadAudio(fileUri);
-          setTranscription(transcriptionText);
-        } catch (error) {
-          console.error('Upload/transcription error:', error);
-          // Error already handled in uploadAudio, just log here
-        } finally {
-          setIsProcessing(false);  // ✅ UNLOCK: Allow new recordings
-        }
+        const transcriptionText = await uploadAudio(fileUri);
+        setTranscription(transcriptionText);
       }
 
       return fileUri;
     } catch (error) {
       console.error('Error stopping recording:', error);
-      setIsProcessing(false);  // Ensure we unlock on error
     }
   };
 
   const toggle = async () => {
     if (recording) return stop();
     else return start();
-  };
-
-  const clearOrder = () => {
-    setOrder(null);
-    setTranscription(null);
   };
 
   const uploadAudio = async (fileUri: string) => {
@@ -215,21 +166,6 @@ export function useRecorder() {
       
       const data = await response.json();
       console.log('Server response:', data);
-      
-      // ✅ HANDLE SERVER ERRORS (e.g., audio too short/quiet)
-      if (data.status === "error") {
-        Alert.alert(
-          'Recording Issue',
-          data.error || 'Unable to process audio. Please try again.'
-        );
-        return null;
-      }
-      
-      // ✅ EXTRACT ORDER DATA
-      if (data.order) {
-        setOrder(data.order);
-      }
-      
       return data.transcription;
     } catch (error) {
       console.error('Upload error:', error);
@@ -239,16 +175,5 @@ export function useRecorder() {
     }
   };
 
-  return { 
-    recording, 
-    seconds, 
-    uri, 
-    toggle, 
-    uploadAudio, 
-    transcription, 
-    permissionGranted,
-    isProcessing,  //  Expose processing state
-    order,  //  Expose parsed order
-    clearOrder  //  Function to clear order
-  };
+  return { recording, seconds, uri, toggle, uploadAudio, transcription, permissionGranted };
 }
