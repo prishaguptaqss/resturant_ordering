@@ -51,7 +51,7 @@ export const products = [
     price: 50,
     img: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=800&q=80",
   },
-  // SPRITE
+  //
   {
     id: "pepsi_can",
     name: "Pepsi (Can)",

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Alert } from "react-native";
 import { Audio } from "expo-av";
 
-const PI_SERVER = "http://192.168.1.213:8000/audio"; 
+const PI_SERVER = process.env.EXPO_PUBLIC_PI_SERVER as string;
 
 export function useRecorder() {
   const [recording, setRecording] = useState(false);
@@ -10,8 +10,8 @@ export function useRecorder() {
   const [uri, setUri] = useState<string | null>(null);
   const [transcription, setTranscription] = useState<string | null>(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);  //  Prevents overlapping requests
-  const [order, setOrder] = useState<any | null>(null);  //  Store parsed order data
+  const [isProcessing, setIsProcessing] = useState(false);  
+  const [order, setOrder] = useState<any | null>(null);  
 
   const recRef = useRef<Audio.Recording | null>(null);
   const timerRef = useRef<any>(null);
